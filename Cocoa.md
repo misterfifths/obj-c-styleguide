@@ -30,7 +30,6 @@ I leave you with three rules of thumb:
   - [Protocols and Delegates](#protocols-and-delegates)
   - [Interface Stuff](#interface-stuff)
   - [Literals](#literals)
-  - [Statement Expressions](#statement-expressions)
   - [C Stuff](#c-stuff)
   - [Constants](#constants)
   - [Numeric Types and 64-bit Considerations](#numeric-types-and-64-bit-considerations)
