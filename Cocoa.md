@@ -192,7 +192,7 @@ The traditional argument for ivars is that they avoid the overhead of `objc_msgS
 Standardizing around properties provides a unified syntax for accessing member data, and adds override points for setters and getters. It also sidesteps unintentional issues that may be caused by accessing ivars directly. For instance:
 
 * Properties declared `copy` will only actually copy their values if assigned through the setter. (And the fact that this isn't the case with `strong` and `weak` is certain to be confusing to newcomers.)
-* Direct ivar access isn't KVC-compliant.
+* Direct ivar access isn't KVO-compliant -- observers will not be able to detect changes to properties made via the ivar.
 * Even though you may not explicitly reference `self`, accessing ivars in a block still implicitly captures a strong reference to `self`. Surprise!
 
 
@@ -454,22 +454,6 @@ Use them.
 **Rationale** Just ... look.
 
 
-## Statement Expressions
-
-They're obscure and initially inscrutable, but learn to love them. See [this](http://cocoa-dom.tumblr.com/post/56517731293/new-thing-i-do-in-code).
-
-```objective-c
-self.bounds = ({
-    CGRect bounds = self.bounds;
-    bounds.size.height += 5;
-    bounds.origin.y -= 5;
-    bounds;
-});
-```
-
-So nice, right?! Doesn't pollute the scope, lets you use common names like `bounds` and `frame`, and provides nice logical grouping.
-
-
 ## C Stuff
 
 Use `NS_INLINE` (compiler-agnostic `static inline`) functions instead of function-like macros, whenever possible.
@@ -559,7 +543,9 @@ CGFloat newWidth = 0.25f * CGRectGetWidth(self.view.frame);
 
 &nbsp;
 
-Semi-relatedly, prefer Apple's semantic typedefs whenever they're available. For instance, use `NSTimeInterval` instead of `double` for durations. **Rationale** Interoperability with Apple's APIs, type genericity, and expressiveness.
+Semi-relatedly, prefer Apple's semantic typedefs whenever they're available. For instance, use `NSTimeInterval` instead of `double` for durations.
+
+**Rationale** Interoperability with Apple's APIs, type genericity, and expressiveness.
 
 
 ## Code Shape and "The Golden Path"
