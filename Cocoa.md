@@ -1,3 +1,5 @@
+# Cocoa, Objective-C, and You
+
 # A Curmudgeonly Foreword
 
 In some ways this is not your typical style guide. I find the stylistic micromanaging in most guides ultimately fruitless. There's no use fighting against years of muscle memory and personal aesthetics to ensure `if ()` over `if()`. Consistency is important, but more at the practical level than the typographic.
