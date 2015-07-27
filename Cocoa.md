@@ -32,7 +32,9 @@ I leave you with three rules of thumb:
   - [Literals](#literals)
   - [C Stuff](#c-stuff)
   - [Constants](#constants)
+  - [Enumerations and bitmasks](#enumerations-and-bitmasks)
   - [Numeric Types and 64-bit Considerations](#numeric-types-and-64-bit-considerations)
+  - [NSNumber](#nsnumber)
   - [Code Shape and "The Golden Path"](#code-shape-and-the-golden-path)
 - [Inspirations](#inspirations)
 
@@ -61,7 +63,7 @@ Don't reinvent the wheel, a'ight?
 * Sensible, version-controllable build settings for new projects: [xcconfigs](https://github.com/jspahrsummers/xcconfigs)
 * Avoiding common causes of [stringly typed code](http://c2.com/cgi/wiki?StringlyTyped): `@keypath` from [libextobjc](https://github.com/jspahrsummers/libextobjc), and `NSStringFromClass`.
 * Avoiding strongly capturing `self` in a block (without writing tons of boilerplate): `@weakify` and `@strongify` from [libextobjc](https://github.com/jspahrsummers/libextobjc)
-* Safer, smaller model (de)serialization: [Mantle](https://github.com/MantleFramework/Mantle)
+* Safer, smaller model (de)serialization: [Mantle](https://github.com/MantleFramework/Mantle) or [JSONModel](https://github.com/icanzilb/JSONModel).
 
 
 # Specific Guidance
@@ -75,7 +77,7 @@ Always use dot notation when dealing with properties. Use bracket notation in al
 ```objective-c
 self.view.backgroundColor = [UIColor redColor];
 [UIApplication sharedApplication].delegate
-[myArray firstObject]
+myArray.firstObject
 ```
 
 *Disprefer*
@@ -83,11 +85,11 @@ self.view.backgroundColor = [UIColor redColor];
 ```objective-c
 [[self view] setBackgroundColor:[UIColor redColor]];
 UIApplication.sharedApplication.delegate
-myArray.firstObject
+[myArray firstObject]
 ```
 
 **Rationale**
-There is an assumption that property access will be idempotent and cheap, which is often not true of methods (consider `-[NSDictionary allValues]`, which generates a new array on each call). Also, Xcode historically has had issues autocompleting non-property use of dot notation.
+There is an assumption that property access will be idempotent and cheap, which is often not true of methods. That said, Apple has been moving towards property-ifying a lot of methods, regardless of their cost. Consider `-[NSDictionary allValues]`, which generates a new array on each call — it became a property in iOS 8, presumably for better Swift support.
 
 
 ## Whitespace
@@ -101,7 +103,11 @@ Multiple developers using their own indenting preferences leads to ugly code, an
 
 ## Namespacing
 
-Use a project-specific prefix for the names of all classes, functions, protocols, and categories. Preferably 3 characters, but no less than 2. **No exceptions**. Under *no* circumstances should you co-opt a well-established existing prefix (e.g. `NS` or `CL`) for your own classes or protocols.
+Historically, Apple has recommended a 3-character prefix for all classes, functions, protocols, categories names, category methods/properties, constants, and so on. There is anecdotal evidence that, with the advent of Swift, this may be [becoming passé](http://inessential.com/2014/07/24/prefixes_considered_passe).
+
+So, my guidance is nuanced. Use a prefix in your application code if you prefer it. But you **must** use a prefix in code that is part of a library, to avoid conflicts with others.
+
+If you decide to (or must) use a prefix, use a *project*-specific one, preferably 3 characters, but no less than 2. Use it **everywhere**. Under *no* circumstances should you co-opt a well-established existing prefix (e.g. `NS`, `AF`, `CL`).
 
 *Prefer*
 
@@ -151,7 +157,7 @@ Use properties over ivars, almost always. There are two exceptions where ivars a
 
 Public and protected ivars are never acceptable. Use a separate header with a subclass-only category for 'protected' properties. See [Visibility](#visibility).
 
-**NB** Accessing properties through their getter/setter in `-init` and `-dealloc` [can be dangerous](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/mmPractical.html#//apple_ref/doc/uid/TP40004447-SW6). The instance is not entirely initialized at those points, and the side-effects of the getter/setter (including any external KVO) may make bad assumptions about the object. So, **there are exactly 3 places where you should access the synthesized ivar for a property: `-init`, `-dealloc`, and getter/setter implementations.**
+**NB** Accessing properties through their getter/setter in initializers and `-dealloc` [can be dangerous](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/mmPractical.html#//apple_ref/doc/uid/TP40004447-SW6). The instance is not entirely initialized at those points, and the side-effects of the getter/setter (including any external KVO) may make bad assumptions about the object. So, **there are exactly 3 places where you should access the synthesized ivar for a property: `-init`, `-dealloc`, and overridden getter/setter implementations.**
 
 *Prefer*
 
@@ -165,7 +171,7 @@ Public and protected ivars are never acceptable. Use a separate header with a su
     _internalState = 2;
 }
 
-// But, in every other method except -dealloc,
+// But, in every other method except -dealloc and overridden accessors,
 self.internalState = 2;
 ```
 
@@ -191,7 +197,7 @@ The traditional argument for ivars is that they avoid the overhead of `objc_msgS
 Standardizing around properties provides a unified syntax for accessing member data, and adds override points for setters and getters. It also sidesteps unintentional issues that may be caused by accessing ivars directly. For instance:
 
 * Properties declared `copy` will only actually copy their values if assigned through the setter. (And the fact that this isn't the case with `strong` and `weak` is certain to be confusing to newcomers.)
-* Direct ivar access isn't KVO-compliant -- observers will not be able to detect changes to properties made via the ivar.
+* Direct ivar access isn't KVO-compliant — observers will not be able to detect changes to properties made via the ivar.
 * Even though you may not explicitly reference `self`, accessing ivars in a block still implicitly captures a strong reference to `self`. Surprise!
 
 
@@ -246,7 +252,7 @@ Everything that is an implementation detail belongs in the `.m` file. Basically,
 
 Similarly, don't expose mutable datatypes through public properties. You don't want users to be able to change data out from under your nose. Expose an immutable copy of your internal data.
 
-For properties that should only be available to subclasses ("protected"), use a category in a separate header. For example, see `UIGestureRecognizerSubclass.h`.
+For properties that should only be available to subclasses ("protected"), use a category in a separate header. For an example from Apple, see `UIGestureRecognizerSubclass.h`.
 
 *Prefer*
 
@@ -361,7 +367,7 @@ The [One True Way](http://cocoasamurai.blogspot.com/2011/04/singletons-your-doin
 }
 ```
 
-I recommend that that be the end of it -- don't try to enforce that the shared instance is the only one, and please don't do anything unholy like overriding `+alloc`. There's very little use in writing code to babysit consumers of your class.
+I recommend that that be the end of it — don't try to enforce that the shared instance is the only one, and please don't do anything unholy like overriding `+alloc`. If you're feeling particularly overprotective, consider marking the `init`s with [`__attribute__((unavailable))`](https://blog.twitter.com/2014/attribute-directives-in-objective-c). But ultimately, there's very little use in writing code to babysit consumers of your class.
 
 Apple gives little guidance on naming the accessor for a singleton. Generally `sharedWhatever` is appropriate when there is intended to be only one instance of the class (e.g. `+[UIApplication sharedApplication]`). If multiple instances could conceivably exist, something like `standardWhatever` or `defaultWhatever` is more appropriate (e.g. `+[NSUserDefaults standardUserDefaults]` or `+[NSFileManager defaultManager]`).
 
@@ -392,7 +398,7 @@ Remember to check if an adopter of your protocol responds to the selector of opt
 
 Delegate properties should be strongly typed (`id<CRLDelegate>`) and `weak`, to avoid retain cycles.
 
-Strict adherence to [Apple's guidelines for delegate method names](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CodingGuidelines/Articles/NamingMethods.html#//apple_ref/doc/uid/20001282-1001803-BCIDAIJE) is important. You should be able to look at a method signature and know with 99% certainty that it is part of a delegate protocol.
+Strict adherence to [Apple's guidelines for delegate method names](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CodingGuidelines/Articles/NamingMethods.html#//apple_ref/doc/uid/20001282-1001803-BCIDAIJE) is important. You should be able to look at a method signature and know with 99% certainty if it is part of a delegate protocol.
 
 [Informal protocols](https://developer.apple.com/library/ios/documentation/general/conceptual/devpedia-cocoacore/Protocol.html) are a relic. Don't.
 
@@ -424,6 +430,10 @@ As of iOS 6, `-viewWillUnload` and `-viewDidUnload` are dead. Your view will nev
 &nbsp;
 
 Do not leave `-initWithNibName:bundle:` as the preferred initializer for consumers of your view controllers. The location of the NIB for your view is an implementation detail! See the discussion in [Visibility](#visibility)
+
+&nbsp;
+
+When subclassing `UIView`, be sure to implement both `-initWithCoder:` and `-initWithFrame:`, so that your view can be instnatiated from Interface Builder and code.
 
 
 ## Literals
@@ -475,6 +485,48 @@ NS_INLINE void CRLMakeTheMagic(NSInteger a, NSInteger b) { ... }
 
 ## Constants
 
+Be aware that the meaning of the `const` keyword is context-sensitive. Read declarations in reverse. Consider these two variables:
+
+```objective-c
+const NSString *var1 = @"hi"   // Nope.
+NSString * const var2 = @"hi"  // Yup!
+```
+
+Reading in reverse, `var1` is "a pointer to an `NSString` that is constant". That is redundant, however, as `NSString` is constant by nature (`NSMutableString` being the non-constant version). This leaves `var1` assignable by anyone; exactly what you were hoping to prevent. `var2`, however, reads as "a constant pointer to an `NSString`", which is what was wanted.
+
+&nbsp;
+
+Declare public constants the way Apple does — put an `extern` reference to the variable name in a header, and the actual values in the implementation file. Note that constant definitions like these should be *outside* of any `@interface` or `@implementation` blocks, since they are not an Objective-C feature.
+
+Use constant variables over `#define`d macros whenever possible. Define macros only for things that will actually be used by the preprocessor (e.g. in an `#if`).
+
+*Prefer*
+
+```objective-c
+// CRLAPIClient.h
+extern NSString * const CRLAPIClientSecret;
+extern NSString * const CRLAPIClientID;
+
+// CRLAPIClient.m
+NSString * const CRLAPIClientSecret = @"my-secret";
+NSString * const CRLAPIClientID = @"my-client-id";
+```
+
+*Disprefer*
+
+```objective-c
+// CRLAPIClient.h
+NSString * const CRLAPIClientSecret = @"my-secret";
+
+// or ...
+#define CRLAPIClientSecret @"my-secret"
+```
+
+**Rationale** Typesafety, Swift accessibility, avoidance of linker issues.
+
+
+## Enumerations and bitmasks
+
 Use the `NS_ENUM` and `NS_OPTIONS` macros [detailed here](http://nshipster.com/ns_enum-ns_options/) for enumerations. Generally use `NSInteger` as the underlying type for `NS_ENUM`s, and `NSUInteger` for `NS_OPTIONS`. Options enumerations should be named in the plural or with a gerund. For instance, `UIViewAnimationOptions` and `UIViewAutoResizing`. Enums that represent independent options should be named with a singular: `UIViewAnimationTransition`.
 
 *Prefer*
@@ -487,27 +539,39 @@ typedef NS_OPTIONS(NSUInteger, CRLAnimationOptions) { ... }
 *Disprefer*
 
 ```objective-c
-typedef enum CRLAnimationCurve { ... } CRLAnimationCurve
+typedef enum _CRLAnimationCurve { ... } CRLAnimationCurve
 ```
 
-**Rationale** These macros allow the compiler to do much better checking about your use of enumerations, and improve completion in Xcode. Also the syntax is a little more sane.
+**Rationale** These macros allow the compiler to do much better checking about your use of enumerations, improve completion in Xcode, and import properly into Swift. Also the syntax is a little more sane.
 
 &nbsp;
 
-Use static constant variables over `#define`d macros whenever possible. Define macros only for things that will actually be used by the preprocessor (e.g. in an `#if`).
+Name the individual elements of an enumeration or bitmask with a prefix of the enum's name (singularized if need be).
 
-**Rationale** Typesafety.
-
-&nbsp;
-
-Be aware that the meaning of the `const` keyword is context-sensitive. Read declarations in reverse. Consider these two variables:
+*Prefer*
 
 ```objective-c
-const NSString *var1 = @"hi"
-NSString * const var2 = @"hi"
+typedef NS_ENUM(NSInteger, CRLAnimationCurve) {
+    CRLAnimationCurveCubic,
+    CRLAnimationCurveSinusoidal
+}
+
+typedef NS_OPTIONS(NSUInteger, CRLAnimationOptions) {
+    CRLAnimationOptionAutoReverse
+}
 ```
 
-Reading in reverse, `var1` is "a pointer to an `NSString` that is constant". That is redundant, however, as `NSString` is constant by nature (`NSMutableString` being the non-constant version). This leaves `var1` assignable by anyone; exactly what you were hoping to prevent. `var2`, however, reads as "a constant pointer to an `NSString`", which is what was wanted.
+*Disprefer*
+
+```objective-c
+typedef NS_ENUM(NSInteger, CRLAnimationCurve) {
+    // anything not beginning with "CRLAnimationCurve"...
+    Cubic,
+    CRLCurveTypeSinusoidal
+}
+```
+
+**Rationale** Consistency, predictability, and Swift compatibility.
 
 
 ## Numeric Types and 64-bit Considerations
@@ -520,7 +584,7 @@ Stick to the Cocoa typedefs wherever possible: the `NS`-prefixed integer types, 
 
 &nbsp;
 
-Import `tgmath.h` in your prefix header. This is a [C99 feature](http://libreprogramming.org/books/c/tgmath/) that provides type-generic wrappers around the standard `math.h` functions. After including this, you can write code like `cos(someCGPoint.x)` without warnings on all architectures. Avoid the type-specific versions like `cosf` and `cosl`.
+Consider importing `tgmath.h` in your prefix header. This is a [C99 feature](http://libreprogramming.org/books/c/tgmath/) that provides type-generic wrappers around the standard `math.h` functions. After including this, you can write code like `cos(someCGPoint.x)` without warnings on all architectures. Avoid the type-specific versions like `cosf` and `cosl`.
 
 &nbsp;
 
@@ -542,9 +606,22 @@ CGFloat newWidth = 0.25f * CGRectGetWidth(self.view.frame);
 
 &nbsp;
 
-Semi-relatedly, prefer Apple's semantic typedefs whenever they're available. For instance, use `NSTimeInterval` instead of `double` for durations.
+Use the most semantically meaningful primitive type possible. For example, if a number could never conceivably be negative (e.g., an array index), use an `NSUInteger`.
+
+Also, prefer Apple's specialized typedefs when they make sense. For instance, use `NSTimeInterval` instead of `double` for durations expressed in seconds.
 
 **Rationale** Interoperability with Apple's APIs, type genericity, and expressiveness.
+
+
+## NSNumber and NSValue
+
+`NSNumber` has one and **only** one use: to put primitives into Objective-C containers (`NSArray`, `NSDictionary`, etc.). Do not use it for properties or local variables; always prefer a primitive type when possible.
+
+**Rationale** `NSNumber` is annoying since you can't do math on it. Also an `NSNumber` loses all the semantic meaning in an actual primitive type — since it can store floats, integers, unsigned integers, and booleans, it leaves no indication of what type the variable is actually intended to be.
+
+&nbsp;
+
+The same goes for `NSValue`, which is responsible for boxing structs. Don't use it for anything other than putting structs in containers.
 
 
 ## Code Shape and "The Golden Path"
@@ -553,7 +630,7 @@ Keep the "golden path" (i.e. the main logic flow) through a function at the lowe
 
 This probably combats your muscle memory for `-init` functions, but give it a shot.
 
-**Prefer**
+*Prefer*
 
 ```objective-c
 -(void)someMethod {
@@ -562,7 +639,7 @@ This probably combats your muscle memory for `-init` functions, but give it a sh
 }
 ```
 
-**Disprefer**
+*Disprefer*
 
 ```objective-c
 -(void)someMethod {
@@ -572,7 +649,7 @@ This probably combats your muscle memory for `-init` functions, but give it a sh
 }
 ```
 
-***Rationale*** Readability. Writability (nicer to not have to worry about matching deeply nested brackets). And, semantically, this makes the main purpose of a block of code more obvious.
+**Rationale** Readability. Writability (nicer to not have to worry about matching deeply nested brackets). And, semantically, this makes the main purpose of a block of code more obvious.
 
 
 # Inspirations
