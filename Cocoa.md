@@ -34,7 +34,7 @@ I leave you with three rules of thumb:
   - [Constants](#constants)
   - [Enumerations and bitmasks](#enumerations-and-bitmasks)
   - [Numeric Types and 64-bit Considerations](#numeric-types-and-64-bit-considerations)
-  - [NSNumber](#nsnumber)
+  - [NSNumber and NSValue](#nsnumber-and-nsvalue)
   - [Code Shape and "The Golden Path"](#code-shape-and-the-golden-path)
 - [Inspirations](#inspirations)
 
