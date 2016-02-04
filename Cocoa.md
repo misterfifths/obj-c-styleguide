@@ -243,7 +243,7 @@ In service of [DRY](http://c2.com/cgi/wiki?DontRepeatYourself), let Xcode auto-s
 
 * You are implementing an `optional` property from a protocol (these must be explicitly synthesized). For consistency's sake, give the synthesized ivar an underscore prefix, just as if it was auto-synthesized: `@synthesize state = _state`.
 
-* Your code (or your superclass — *\*ahem\** `NSManagedObject`) is doing some runtime voodoo which calls for `@dynamic`.
+* Your code (or your superclass — **ahem** `NSManagedObject`) is doing some runtime voodoo which calls for `@dynamic`.
 
 
 ## Visibility
