@@ -121,7 +121,7 @@ If you decide to (or must) use a prefix, use a *project*-specific one, preferabl
 
 CGPoint CRLPointMakeIntegral(CGPoint pt);
 
-static NSErrorDomain const CRLServiceErrorDomain = @"CRLServiceErrorDomain";
+NSErrorDomain const CRLServiceErrorDomain = @"CRLServiceErrorDomain";
 ```
 
 *Disprefer*
@@ -137,7 +137,7 @@ static NSErrorDomain const CRLServiceErrorDomain = @"CRLServiceErrorDomain";
 
 CGPoint CGPointMakeIntegral(CGPoint pt);
 
-static NSErrorDomain const ServiceErrorDomain = ...
+NSErrorDomain const ServiceErrorDomain = ...
 ```
 
 **Rationale**
@@ -533,7 +533,7 @@ NSString * const CRLAPIClientSecret = @"my-secret";
 
 &nbsp;
 
-For string constants that fit into a class of existing constants (i.e., "string enums" – think things like `NSNotificationCenter` notification names), use `NS_EXTENSIBLE_STRING_ENUM` typedefs. These are available in Xcode 8+. Below are some useful existing typedefs for your own constants. If you need a custom typedef, see [Enumerations and Bitmasks](#enumerations-and-bitmasks) for guidance.
+For string constants that fit into a class of existing constants (i.e., "string enums" – think things like `NSNotificationCenter` notification names), use `NS_EXTENSIBLE_STRING_ENUM` typedefs. These are available in Xcode 8+. Below are some useful existing typedefs for your own constants. If you need a custom typedef, see [Enumerations and bitmasks](#enumerations-and-bitmasks) for guidance.
 
 | `NSString *` typedef | purpose |
 |---------|---------|
@@ -744,6 +744,24 @@ if(!fileContents) {
 ```
 
 **Rationale**: Errors codes are **not unique**. Only the combination of a code and a domain is enough to absolutely represent an error. For instance, error code 5 could mean "bad string encoding" in the Foundation error domain, but "no network connection" in the URL error domain.
+
+&nbsp;
+
+Don't hesitate to make your own custom error domain and codes if you're building something complicated. If you do so, you should use the `NSErrorDomain` typedef for your domain and an anonymous `NSInteger`-typed `NS_ENUM` for the codes (see [Constants](#constants) and [Enumerations and bitmasks](#enumerations-and-bitmasks) for more details). For example:
+
+```objective-c
+// CRLCombustionEngine.h
+extern NSErrorDomain const CRLCombustionEngineErrorDomain;
+
+NS_ENUM(NSInteger) {
+    CRLCombustionEngineErrorNoGas,
+    CRLCombustionEngineErrorOverheated,
+    // ...
+};
+
+// CRLCombustionEngine.m
+NSErrorDomain const CRLCombustionEngineErrorDomain = "CRLCombustionEngineErrorDomain";
+```
 
 
 ## Code Shape and "The Golden Path"
