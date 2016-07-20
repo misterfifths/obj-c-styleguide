@@ -74,7 +74,7 @@ Always use dot notation when dealing with properties. Use bracket notation in al
 *Prefer*
 
 ```objective-c
-self.view.backgroundColor = [UIColor redColor];
+self.view.backgroundColor = UIColor.redColor;
 UIApplication.sharedApplication.delegate
 myArray.firstObject
 ```
