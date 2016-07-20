@@ -6,17 +6,17 @@ In some ways this is not your typical style guide. I find the stylistic microman
 
 In that spirit, this guide aims to ensure clarity, predictability, and de facto avoidance of common gotchas. Except for cases where it overlaps with those goals, I'm not going to dictate elements of personal style.
 
-I leave you with three rules of thumb:
+I leave you with four rules of thumb:
 
 1. Be consistent.
-2. Try to fit in with the code around you
-3. [Leave the code in better condition than you found it.](https://github.com/RobotsAndPencils/objective-c-style-guide#boyscout--girl-guide)
+2. Try to fit in with the code around you.
+3. Follow Apple's lead.
+4. [Leave the code in better condition than you found it.](https://github.com/RobotsAndPencils/objective-c-style-guide#boyscout--girl-guide)
 
 
 # Contents
 
 - [Indisputable Truths *(tl;dr)*](#indisputable-truths-tldr)
-- [Shameless Plug](#shameless-plug)
 - [Solved Problems](#solved-problems)
 - [Specific Guidance](#specific-guidance)
   - [Dot Notation](#dot-notation)
@@ -37,6 +37,7 @@ I leave you with three rules of thumb:
   - [Enumerations and bitmasks](#enumerations-and-bitmasks)
   - [Numeric Types and 64-bit Considerations](#numeric-types-and-64-bit-considerations)
   - [NSNumber and NSValue](#nsnumber-and-nsvalue)
+  - [NSError](#nserror)
   - [Code Shape and "The Golden Path"](#code-shape-and-the-golden-path)
 - [Inspirations](#inspirations)
 
@@ -50,10 +51,6 @@ I leave you with three rules of thumb:
 * Give [Apple's guidelines on naming methods](https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/CodingGuidelines/CodingGuidelines.html) a thorough reading. If you ever think "what should I name this method?", it has the answers. ([More...](#naming-things))
 * Four spaces for indents. No tabs. This is not the Xcode default; you should change it.
 * Use [CocoaPods](http://cocoapods.org/) for external modules. If the module you want doesn't have a pod, use Git submodules (or, better, write a [podspec](http://guides.cocoapods.org/syntax/podspec.html) for it). Only commit the full external library as a last resort.
-
-
-# Shameless Plug
-Strongly consider using [Amaro](https://github.com/crushlovely/Amaro), our iOS bootstrapper. It sets you up with a ready-to-build project incorporating many of the principles here.
 
 
 # Solved Problems
@@ -72,13 +69,13 @@ Don't reinvent the wheel, a'ight?
 
 ## Dot Notation
 
-Always use dot notation when dealing with properties. Use bracket notation in all other instances, especially when invoking class methods.
+Always use dot notation when dealing with properties. Use bracket notation in all other instances.
 
 *Prefer*
 
 ```objective-c
 self.view.backgroundColor = [UIColor redColor];
-[UIApplication sharedApplication].delegate
+UIApplication.sharedApplication.delegate
 myArray.firstObject
 ```
 
@@ -86,12 +83,14 @@ myArray.firstObject
 
 ```objective-c
 [[self view] setBackgroundColor:[UIColor redColor]];
-UIApplication.sharedApplication.delegate
+[UIApplication sharedApplication].delegate
 [myArray firstObject]
 ```
 
 **Rationale**
 There is an assumption that property access will be idempotent and cheap, which is often not true of methods. That said, Apple has been moving towards property-ifying a lot of methods, regardless of their cost. Consider `-[NSDictionary allValues]`, which generates a new array on each call — it became a property in iOS 8, presumably for better Swift support.
+
+As of Xcode 8/the iOS 10 SDK, Objective-C has support for [class properties](http://blog.andrewmadsen.com/post/145919242155/objective-c-class-properties). That means dot syntax is now the right choice for singleton access (e.g., `UIApplication.sharedApplication`) and a lot of other class-level getter-like things (e.g., `UIColor.redColor`).
 
 
 ## Whitespace
@@ -122,7 +121,7 @@ If you decide to (or must) use a prefix, use a *project*-specific one, preferabl
 
 CGPoint CRLPointMakeIntegral(CGPoint pt);
 
-static NSString * const CRLServiceErrorDomain = @"CRLServiceErrorDomain";
+static NSErrorDomain const CRLServiceErrorDomain = @"CRLServiceErrorDomain";
 ```
 
 *Disprefer*
@@ -138,7 +137,7 @@ static NSString * const CRLServiceErrorDomain = @"CRLServiceErrorDomain";
 
 CGPoint CGPointMakeIntegral(CGPoint pt);
 
-static NSString * const ServiceErrorDomain = ...
+static NSErrorDomain const ServiceErrorDomain = ...
 ```
 
 **Rationale**
@@ -354,15 +353,19 @@ Only use `get` in accessor methods when they return results indirectly (via a po
 
 ## Singletons
 
-The [One True Way](http://cocoasamurai.blogspot.com/2011/04/singletons-your-doing-them-wrong.html) to make singletons is with `dispatch_once` and a static instance:
+The [One True Way](http://cocoasamurai.blogspot.com/2011/04/singletons-your-doing-them-wrong.html) to make singletons is with `dispatch_once`, a static instance, and (as of Xcode 8) a [class property](http://blog.andrewmadsen.com/post/145919242155/objective-c-class-properties):
 
 ```objective-c
+// CRLSingletonClass.h
+@property (class, nonatomic, readonly) CRLSingletonClass *sharedInstance;
+
+// CRLSingletonClass.m
 +(CRLSingletonClass *)sharedInstance {
     static dispatch_once_t onceToken;
     static CRLSingletonClass *singletonInstance;
     
     dispatch_once(&onceToken, ^{
-        singletonInstance = [[CRLSingletonClass alloc] init]
+        singletonInstance = [[CRLSingletonClass alloc] init];
     });
     
     return singletonInstance;
@@ -392,7 +395,7 @@ Relatedly, from that Mike Ash article, avoid `+load`. It's a scary place.
 
 ## Protocols and Delegates
 
-Declare protocols in the same header as the related class.
+Declare delegate protocols in the same header as the related class.
 
 Always annotate the methods of your protocol with `@optional` and `@required`. No one can remember the default.
 
@@ -402,7 +405,7 @@ Delegate properties should be strongly typed (`id<CRLDelegate>`) and `weak`, to 
 
 Strict adherence to [Apple's guidelines for delegate method names](https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CodingGuidelines/Articles/NamingMethods.html#//apple_ref/doc/uid/20001282-1001803-BCIDAIJE) is important. You should be able to look at a method signature and know with 99% certainty if it is part of a delegate protocol.
 
-[Informal protocols](https://developer.apple.com/library/ios/documentation/general/conceptual/devpedia-cocoacore/Protocol.html) are a relic. Don't.
+[Informal protocols](https://developer.apple.com/library/ios/documentation/general/conceptual/devpedia-cocoacore/Protocol.html) are a relic. Don't. If you don't know what they are, don't even click that link.
 
 
 ## Interface Stuff
@@ -411,7 +414,7 @@ Strict adherence to [Apple's guidelines for delegate method names](https://devel
 
 * If the outlet is a top-level object in your NIB, you need to store a strong reference to it.
 
-* If you will be removing the outlet from the view hierarchy (but want to reuse it later), you will need a strong reference to it in order to avoid it being released.
+* If you will be removing the outlet from the view hierarchy (but want to reuse it later), you will need a strong reference to it in order to avoid it being released. Note that this also applies to things like layout constraints, which are removed from the hierarchy when deactivated.
 
 **Rationale** The view hierarchy owns most things that you would create an outlet for. Having weak outlets avoids surprising retain cycles.
 
@@ -435,7 +438,7 @@ Do not leave `-initWithNibName:bundle:` as the preferred initializer for consume
 
 &nbsp;
 
-When subclassing `UIView`, be sure to implement both `-initWithCoder:` and `-initWithFrame:`, so that your view can be instnatiated from Interface Builder and code.
+When subclassing `UIView`, be sure to implement both `-initWithCoder:` and `-initWithFrame:`, so that your view can be instantiated from both Interface Builder and code, respectively.
 
 
 ## Literals
@@ -502,6 +505,8 @@ Declare public constants the way Apple does — put an `extern` reference to the
 
 Use constant variables over `#define`d macros whenever possible. Define macros only for things that will actually be used by the preprocessor (e.g. in an `#if`).
 
+Name your constants with a prefix and a descriptive name.
+
 *Prefer*
 
 ```objective-c
@@ -525,6 +530,18 @@ NSString * const CRLAPIClientSecret = @"my-secret";
 ```
 
 **Rationale** Typesafety, Swift accessibility, avoidance of linker issues.
+
+&nbsp;
+
+For string constants that fit into a class of existing constants (i.e., "string enums" – think things like `NSNotificationCenter` notification names), use `NS_EXTENSIBLE_STRING_ENUM` typedefs. These are available in Xcode 8+. Below are some useful existing typedefs for your own constants. If you need a custom typedef, see [Enumerations and Bitmasks](#enumerations-and-bitmasks) for guidance.
+
+| `NSString *` typedef | purpose |
+|---------|---------|
+| `NSNotificationName` | `NSNotificationCenter` notification names |
+| `NSErrorDomain`      | `NSError` domains |
+| `NSValueTransformerName` | `NSValueTransformer` names |
+
+**Rationale** Expressiveness, typesafety, and better Swift interoperability. 
 
 
 ## Enumerations and bitmasks
@@ -575,6 +592,28 @@ typedef NS_ENUM(NSInteger, CRLAnimationCurve) {
 
 **Rationale** Consistency, predictability, and Swift compatibility.
 
+&nbsp;
+
+For collections of related `NSString` constants ("string enums"), use a `NS_EXTENSIBLE_STRING_ENUM` typedef (available in Xcode 8+). Note that there are already a few existing typedefs for things like `NSNotificationCenter` message names. See [Constants](#constants) for a table of those.
+
+For custom extensible string enums, use this approach:
+
+```objective-c
+// CRLEventEngine.h
+// Declare the enum typedef:
+typedef NSString * CRLEventName NS_EXTENSIBLE_STRING_ENUM;
+
+// Use it for all related constants. Note that these constants can be defined be in multiple files, and even in multiple targets.
+extern CRLEventName const CRLTapEventName;
+extern CRLEventName const CRLDoubleTapEventName;
+
+// CRLEventEngine.m
+CRLEventName const CRLTapEventName = @"tap";
+CRLEventName const CRLDoubleTapEventName = @"doubletap";
+```
+
+**Rationale** Consistency, better typesafety, and Swift interoperability.
+
 
 ## Numeric Types and 64-bit Considerations
 
@@ -624,6 +663,87 @@ Also, prefer Apple's specialized typedefs when they make sense. For instance, us
 &nbsp;
 
 The same goes for `NSValue`, which is responsible for boxing structs. Don't use it for anything other than putting structs in containers.
+
+
+## NSError
+
+When declaring a local `NSError` variable for use as an out parameter, assign it to `nil` before using it.
+
+*Prefer*
+
+```objective-c
+NSError *error = nil;
+NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
+```
+
+*Disprefer*
+
+```objective-c
+NSError *error;
+NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
+```
+
+**Rationale** Local variables are initialized to garbage. If you forget to set the error variable to `nil` and then use it, but no error occurred, your app will probably crash. Note that this situation is partially mitigated by the next piece of guidance, but is still a good habit.
+
+&nbsp;
+
+When using a method that has an `NSError` out parameter and returns `BOOL` or an object, check the return value *rather than the `nil`-ness of the error* to detect a problem.
+
+*Prefer*
+
+```objective-c
+NSError *error = nil;
+NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
+
+if(!fileContents) {
+    // An error occurred...
+}
+```
+
+*Disprefer*
+
+```objective-c
+NSError *error = nil;
+NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
+
+if(error) {
+    // An error occurred...
+}
+```
+
+**Rationale** While unlikely, there is nothing stopping the method from assigning the error parameter even in the case of success. All of Apple's documentation suggests that you rely on the return value to indicate an error. Also this approach mitigates problems if you forgot to initialize the local error variable to `nil`.
+
+&nbsp;
+
+When inspecting the reason for an error, you must check **both** the `domain` and `code` of the `NSError` object.
+
+*Prefer*
+
+```objective-c
+NSError *error = nil;
+NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
+
+if(!fileContents) {
+    if([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorFileDoesNotExist) {
+        // Handle file not found...
+    }
+}
+```
+
+*Disprefer*
+
+```objective-c
+NSError *error = nil;
+NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
+
+if(!fileContents) {
+    if(error.code == NSURLErrorFileDoesNotExist) {
+        // Handle file not found...
+    }
+}
+```
+
+**Rationale**: Errors codes are **not unique**. Only the combination of a code and a domain is enough to absolutely represent an error. For instance, error code 5 could mean "bad string encoding" in the Foundation error domain, but "no network connection" in the URL error domain.
 
 
 ## Code Shape and "The Golden Path"
