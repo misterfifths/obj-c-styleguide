@@ -603,7 +603,8 @@ For custom extensible string enums, use this approach:
 // Declare the enum typedef:
 typedef NSString * CRLEventName NS_EXTENSIBLE_STRING_ENUM;
 
-// Use it for all related constants. Note that these constants can be defined be in multiple files, and even in multiple targets.
+// Use it for all related constants. Note that these constants can be defined be in
+// multiple files, and even across multiple targets.
 extern CRLEventName const CRLTapEventName;
 extern CRLEventName const CRLDoubleTapEventName;
 
