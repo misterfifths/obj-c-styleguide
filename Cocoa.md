@@ -292,7 +292,7 @@ For properties that should only be available to subclasses ("protected"), use a 
 
 &nbsp;
 
-A specific case of the above principle is that of `-[UIViewController initWithNibName:bundle:]`. It is the default initializer for view controllers, but in 99.9% of cases, the name of the nib for your VC is an implementation detail. Don't make users of your class supply it! Supply a custom `-init` method that does the right thing. See ["initWithNibName:bundle: Breaks Encapsulation"](http://oleb.net/blog/2012/01/initWithNibName-bundle-breaks-encapsulation/).
+A specific case of the above principle is that of `-[UIViewController initWithNibName:bundle:]`. It is the default initializer for view controllers, but in 99.9% of cases, the name of the nib for your VC is an implementation detail. Don't make users of your class supply it! Supply a custom `-init` method that does the right thing. See [`initWithNibName:bundle:` Breaks Encapsulation](http://oleb.net/blog/2012/01/initWithNibName-bundle-breaks-encapsulation/).
 
 &nbsp;
 
@@ -434,7 +434,7 @@ As of iOS 6, `-viewWillUnload` and `-viewDidUnload` are dead. Your view will nev
 
 &nbsp;
 
-Do not leave `-initWithNibName:bundle:` as the preferred initializer for consumers of your view controllers. The location of the NIB for your view is an implementation detail! See the discussion in [Visibility](#visibility)
+Do not leave `-initWithNibName:bundle:` as the preferred initializer for consumers of your view controllers. The location of the NIB for your view is an implementation detail! See the discussion in [Visibility](#visibility).
 
 &nbsp;
 
@@ -497,7 +497,7 @@ const NSString *var1 = @"hi"   // Nope.
 NSString * const var2 = @"hi"  // Yup!
 ```
 
-Reading in reverse, `var1` is "a pointer to an `NSString` that is constant". That is redundant, however, as `NSString` is constant by nature (`NSMutableString` being the non-constant version). This leaves `var1` assignable by anyone; exactly what you were hoping to prevent. `var2`, however, reads as "a constant pointer to an `NSString`", which is what was wanted.
+Reading in reverse, `var1` is "a pointer to an `NSString` that is constant". That is redundant, however, as `NSString` is constant by nature (`NSMutableString` being the non-constant version). This leaves `var1` assignable by anyone: exactly what you were hoping to prevent. `var2`, however, reads as "a constant pointer to an `NSString`", which is what was wanted.
 
 &nbsp;
 
@@ -533,7 +533,7 @@ NSString * const CRLAPIClientSecret = @"my-secret";
 
 &nbsp;
 
-For string constants that fit into a class of existing constants (i.e., "string enums" – think things like `NSNotificationCenter` notification names), use `NS_EXTENSIBLE_STRING_ENUM` typedefs. These are available in Xcode 8+. Below are some useful existing typedefs for your own constants. If you need a custom typedef, see [Enumerations and bitmasks](#enumerations-and-bitmasks) for guidance.
+For string constants that fit into a class of existing constants ("string enums" – think things like `NSNotificationCenter` notification names), use `NS_EXTENSIBLE_STRING_ENUM` typedefs. These are available in Xcode 8+. Below are some useful existing typedefs for your own constants. If you need a custom typedef, see [Enumerations and bitmasks](#enumerations-and-bitmasks) for guidance.
 
 | `NSString *` typedef | purpose |
 |---------|---------|
@@ -546,7 +546,7 @@ For string constants that fit into a class of existing constants (i.e., "string 
 
 ## Enumerations and bitmasks
 
-Use the `NS_ENUM` and `NS_OPTIONS` macros [detailed here](http://nshipster.com/ns_enum-ns_options/) for enumerations. Generally use `NSInteger` as the underlying type for `NS_ENUM`s, and `NSUInteger` for `NS_OPTIONS`. Options enumerations should be named in the plural or with a gerund. For instance, `UIViewAnimationOptions` and `UIViewAutoResizing`. Enums that represent independent options should be named with a singular: `UIViewAnimationTransition`.
+Use the `NS_ENUM` and `NS_OPTIONS` macros [detailed here](http://nshipster.com/ns_enum-ns_options/) for enumerations. Generally use `NSInteger` as the underlying type for `NS_ENUM`s, and `NSUInteger` for `NS_OPTIONS`. Options should be named in the plural or with a gerund. For instance, `UIViewAnimationOptions` and `UIViewAutoResizing`. Enums that represent independent choices should be named with a singular: `UIViewAnimationTransition`.
 
 *Prefer*
 
@@ -684,7 +684,7 @@ NSError *error;
 NSString *fileContents = [NSString stringWithContentsOfFile:@"blah.json" encoding:NSUTF8StringEncoding error:&error];
 ```
 
-**Rationale** Local variables are initialized to garbage. If you forget to set the error variable to `nil` and then use it, but no error occurred, your app will probably crash. Note that this situation is partially mitigated by the next piece of guidance, but is still a good habit.
+**Rationale** Local variables are initialized to garbage. If you forget to set the error variable to `nil` and then access it, but no error occurred, your app will probably crash. Note that this situation is mitigated by the next piece of guidance, but is still a good habit.
 
 &nbsp;
 
@@ -716,7 +716,7 @@ if(error) {
 
 &nbsp;
 
-When inspecting the reason for an error, you must check **both** the `domain` and `code` of the `NSError` object.
+When attempting to identify a specific error, you must check **both** the `domain` and `code` of the `NSError` object.
 
 *Prefer*
 
